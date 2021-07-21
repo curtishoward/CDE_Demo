@@ -51,19 +51,5 @@ customer_scoring = CDEJobRunOperator(
 
 end = DummyOperator(task_id='end', dag=dag)
 
-vw_query = """
-SELECT * FROM default.LC_model_scoring WHERE probability < 0.3;
-"""
 
-mart_hive_cdw = CDWOperator(
-    task_id='dataset-etl-mart-cdw',
-    dag=dag,
-    cli_conn_id='LC_customer_vw',
-    hql=vw_query,
-    schema='default',
-    ### CDW related args ###
-    use_proxy_user=False,
-    query_isolation=True
-)
-
-start >> data_exploration >> kpi_reports >> customer_scoring >> mart_hive_cdw >> end
+start >> data_exploration >> kpi_reports >> customer_scoring >> end
