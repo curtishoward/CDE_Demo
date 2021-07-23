@@ -4,19 +4,27 @@ from pyspark.sql import functions as F
 from pyspark.sql.functions import when
 from pyspark.sql.functions import to_date
 
+import configparser
+import sys 
+
+config = configparser.ConfigParser()
+config.read('/app/mount/cde_examples.ini')
+s3BucketPath = config['CDE-examples']['s3BucketPath'].replace('"','').replace("\'",'')
+prefix = config['CDE-examples']['userPrefix'].replace('"','').replace("\'",'')
+
 ## Launching Spark Session
 
 spark = SparkSession\
     .builder\
     .appName("DataExploration")\
-    .config("spark.hadoop.fs.s3a.s3guard.ddb.region","us-east-1")\
-    .config("spark.yarn.access.hadoopFileSystems","s3a://demo-aws-2/")\
+    .config("spark.yarn.access.hadoopFileSystems", s3BucketPath)\
+    .config("spark.hadoop.fs.s3a.s3guard.ddb.region",config['CDE-examples']['region'])\
     .getOrCreate()
 
 ## Creating Spark Dataframe from raw CSV datagov
 
 df = spark.read.option('inferschema','true').csv(
-  "s3a://demo-aws-2/data/LendingClub/LoanStats_2015_subset.csv",
+  s3BucketPath + "/LoanStats_2015_subset.csv",
   header=True,
   sep=',',
   nullValue='NA'
@@ -97,11 +105,11 @@ spark.sql("show databases").show()
 
 spark.sql("show tables").show()
 
-df.write.format('parquet').mode("overwrite").saveAsTable('default.LC_table')
+df.write.format('parquet').mode("overwrite").saveAsTable('default.' + prefix + '_LC_table')
 
 #Running SQL like queries on the dataframe 
-group_by_grade = spark.sql("SELECT grade, MEAN(loan_amnt) FROM LC_table WHERE grade IS NOT NULL GROUP BY grade ORDER BY grade")
+group_by_grade = spark.sql("SELECT grade, MEAN(loan_amnt) FROM " + prefix + "_LC_table WHERE grade IS NOT NULL GROUP BY grade ORDER BY grade")
 
 group_by_grade.show()
 
-group_by_subgrade = spark.sql("SELECT sub_grade, MEAN(loan_amnt), MEAN(annual_inc), SUM(is_default) FROM LC_table GROUP BY sub_grade ORDER BY sub_grade")
+group_by_subgrade = spark.sql("SELECT sub_grade, MEAN(loan_amnt), MEAN(annual_inc), SUM(is_default) FROM " + prefix + "_LC_table GROUP BY sub_grade ORDER BY sub_grade")

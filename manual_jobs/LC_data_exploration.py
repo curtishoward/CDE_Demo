@@ -1,19 +1,25 @@
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
+import configparser
+
+config = configparser.ConfigParser()
+config.read('/app/mount/cde_examples.ini')
+s3BucketPath = config['CDE-examples']['s3BucketPath'].replace('"','').replace("\'",'')
+
 
 ## Launching Spark Session
 
 spark = SparkSession\
     .builder\
     .appName("DataExploration")\
-    .config("spark.hadoop.fs.s3a.s3guard.ddb.region","us-east-1")\
-    .config("spark.yarn.access.hadoopFileSystems","s3a://demo-aws-2/")\
+    .config("spark.yarn.access.hadoopFileSystems", s3BucketPath)\
+    .config("spark.hadoop.fs.s3a.s3guard.ddb.region", config['CDE-examples']['region'])\
     .getOrCreate()
 
 ## Creating Spark Dataframe from raw CSV datagov
 
 df = spark.read.option('inferschema','true').csv(
-  "s3a://demo-aws-2/data/LendingClub/LoanStats_2015_subset.csv",
+  s3BucketPath + "/LoanStats_2015_subset.csv",
   header=True,
   sep=',',
   nullValue='NA'

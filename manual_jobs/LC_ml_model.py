@@ -6,18 +6,25 @@ from pyspark.sql import functions as F
 from pyspark.mllib.stat import Statistics
 from pyspark.sql import SparkSession
 
+import configparser
+
+config = configparser.ConfigParser()
+config.read('/app/mount/cde_examples.ini')
+s3BucketPath = config['CDE-examples']['s3BucketPath'].replace('"','').replace("\'",'')
+prefix = config['CDE-examples']['userPrefix'].replace('"','').replace("\'",'')
+
 ## Creating new Spark session
 
 spark = SparkSession\
     .builder\
     .appName("PythonSQL")\
-    .config("spark.hadoop.fs.s3a.s3guard.ddb.region","us-east-1")\
-    .config("spark.yarn.access.hadoopFileSystems","s3a://demo-aws-2/")\
+    .config("spark.yarn.access.hadoopFileSystems", s3BucketPath)\
+    .config("spark.hadoop.fs.s3a.s3guard.ddb.region", config['CDE-examples']['region'])\
     .getOrCreate()
 
 ## Loading data from Spark table we created previously
 
-df = spark.sql("SELECT * FROM default.LC_Table")
+df = spark.sql("SELECT * FROM default." + prefix + "_LC_Table")
 
 #Creating list of categorical and numeric features
 num_cols = [item[0] for item in df.dtypes if item[1].startswith('in') or item[1].startswith('dou')]
@@ -69,7 +76,7 @@ input_data = df_model.rdd.map(lambda x: (x["is_default"], float(x['probability']
 ## Outputting predictions from Logistic Regression
 predictions = spark.createDataFrame(input_data, ["is_default", "probability"])
 
-predictions.write.format('parquet').mode("overwrite").saveAsTable('default.LC_model_scoring')
+predictions.write.format('parquet').mode("overwrite").saveAsTable('default.' + prefix + '_LC_model_scoring')
 
 ## Storing Model Pipeline to S3
-pipelineModel.write().overwrite().save("s3a://demo-aws-2/data/LendingClub/pipeline")
+pipelineModel.write().overwrite().save(s3BucketPath + "/" + prefix + "_pipeline")
