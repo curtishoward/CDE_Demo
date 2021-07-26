@@ -39,7 +39,7 @@ data_exploration = CDEJobRunOperator(
 kpi_reports = CDEJobRunOperator(
     task_id='KPI_reports',
     dag=dag,
-    job_name='LC_KPI_reporting-curtis'
+    job_name='LC_KPI_reporting'
 )
 
 customer_scoring = CDEJobRunOperator(
